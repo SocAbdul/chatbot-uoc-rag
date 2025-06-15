@@ -1,0 +1,6 @@
+langchain
+openai
+chromadb
+streamlit
+tiktoken
+python-dotenv
