@@ -6,6 +6,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
 import tempfile
+from langchain import HuggingFaceHub
 import os
 
 st.set_page_config(page_title="Chatbot UOC RAG", layout="wide")
@@ -33,7 +34,7 @@ if uploaded_file:
     vectordb = Chroma.from_documents(docs_split, embeddings)
 
     # 5. Configurar el modelo
-    llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")  # Necesita clave OpenAI
+    llm = HuggingFaceHub(repo_id="google/flan-t5-base", model_kwargs={"temperature": 0.5, "max_length": 512})
     retriever = vectordb.as_retriever(search_kwargs={"k": 5})
     qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
