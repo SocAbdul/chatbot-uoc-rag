@@ -4,3 +4,6 @@ chromadb
 streamlit
 tiktoken
 python-dotenv
+langchain-community
+# Additional libraries for specific functionalities
+
