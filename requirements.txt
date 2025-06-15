@@ -1,11 +1,10 @@
-langchain
-openai
-chromadb
-streamlit
 tiktoken
 python-dotenv
-langchain-community
-# Additional libraries for specific functionalities
-
 pypdf
+sentence-transformers
+streamlit
+langchain
+langchain-community
+openai
+chromadb
 sentence-transformers
