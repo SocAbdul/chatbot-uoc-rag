@@ -8,4 +8,5 @@ langchain-community
 openai
 chromadb
 sentence-transformers
-transformers huggingface_hub
+transformers
+huggingface_hub
