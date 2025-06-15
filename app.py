@@ -1,57 +1,51 @@
 import streamlit as st
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI
+import tempfile
 import os
-from dotenv import load_dotenv
 
-# Cargar variables de entorno (.env)
-load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+st.set_page_config(page_title="Chatbot UOC RAG", layout="wide")
+st.title("📚 Chatbot UOC (RAG)")
 
-st.title("Chatbot RAG UOC")
+uploaded_file = st.file_uploader("Sube un documento PDF", type="pdf")
 
-if not OPENAI_API_KEY:
-    st.error("❌ Por favor configura tu clave OPENAI_API_KEY en el archivo .env")
-    st.stop()
+if uploaded_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(uploaded_file.read())
+        tmp_path = tmp.name
 
-uploaded_files = st.file_uploader(
-    "Sube uno o varios PDFs con documentos UOC",
-    type=["pdf"],
-    accept_multiple_files=True
-)
+    # 1. Cargar el PDF
+    loader = PyPDFLoader(tmp_path)
+    documents = loader.load()
 
-if uploaded_files:
-    with st.spinner("Procesando documentos..."):
-        documents = []
-        for pdf_file in uploaded_files:
-            loader = PyPDFLoader(pdf_file)
-            docs = loader.load()
-            documents.extend(docs)
+    # 2. Dividir el texto en partes
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    docs_split = splitter.split_documents(documents)
 
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        docs_split = text_splitter.split_documents(documents)
+    # 3. Embeddings (con HuggingFace, gratis)
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-        embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
+    # 4. Crear vectorstore
+    vectordb = Chroma.from_documents(docs_split, embeddings)
 
-        vectordb = Chroma.from_documents(docs_split, embeddings)
+    # 5. Configurar el modelo
+    llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")  # Necesita clave OpenAI
+    retriever = vectordb.as_retriever(search_kwargs={"k": 5})
+    qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
 
-        retriever = vectordb.as_retriever()
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=OpenAI(openai_api_key=OPENAI_API_KEY, temperature=0),
-            retriever=retriever
-        )
+    st.success("✅ Documento procesado. Ya puedes hacer preguntas.")
 
-        st.success("Documentos indexados correctamente. ¡Ya puedes hacer preguntas!")
+    # 6. Chat
+    user_question = st.text_input("Haz una pregunta sobre el documento:")
+    if user_question:
+        with st.spinner("Pensando..."):
+            response = qa_chain.run(user_question)
+            st.write("🧠 Respuesta:")
+            st.markdown(response)
 
-        pregunta = st.text_input("Haz una pregunta sobre la UOC:")
-
-        if pregunta:
-            with st.spinner("Buscando respuesta..."):
-                respuesta = qa_chain.run(pregunta)
-                st.write(respuesta)
-else:
-    st.info("Sube uno o varios PDFs para comenzar.")
+    # Limpieza del archivo temporal
+    os.remove(tmp_path)

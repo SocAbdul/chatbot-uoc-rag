@@ -7,3 +7,5 @@ python-dotenv
 langchain-community
 # Additional libraries for specific functionalities
 
+pypdf
+sentence-transformers
